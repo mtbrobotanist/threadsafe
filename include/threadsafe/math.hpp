@@ -5,7 +5,7 @@
 #ifndef THREADSAFE_CPP_MATH_H
 #define THREADSAFE_CPP_MATH_H
 
-#include "math.hpp"
+#include <algorithm>
 
 namespace ts
 {
