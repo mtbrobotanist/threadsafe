@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.5)
 project(threadsafe)
 
+option(RUN_TESTS "Run tests" on)
+
 set(CMAKE_CXX_STANDARD 14)
 
 set(THREADSAFE_INCLUDE_DIRS include)
@@ -13,10 +15,10 @@ set(THREADSAFE_SOURCES
 
 
 add_library(threadsafe ${THREADSAFE_SOURCES})
-add_executable(threadsafe_test_main tests/main.cpp)
-
-
-target_link_libraries(threadsafe_test_main threadsafe)
-
 
 set_target_properties(threadsafe PROPERTIES LINKER_LANGUAGE CXX)
+
+
+if(RUN_TESTS)
+    add_subdirectory(tests)
+endif()
