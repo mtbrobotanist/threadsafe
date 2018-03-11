@@ -9,13 +9,11 @@
 #include <vector>
 #include <mutex>
 #include <map>
-#include <algorithm>
-#include <sstream>
 #include "math.hpp"
+
 
 namespace ts
 {
-
 
 template<typename K, typename V>
 class map
@@ -32,7 +30,7 @@ class map
         const std::pair<K,V>& current_pair = _data[index]; \
         const std::pair<K,V>& low_pair = _data[low]; \
         const std::pair<K,V>& high_pair = _data[high]; \
-        if(compare(current_pair.first, KEY) == 0) \
+        if(compare(KEY, current_pair.first) == 0) \
         { \
             return BEGIN_FUNC() + index; \
         } \
