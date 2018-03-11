@@ -1,12 +1,22 @@
 cmake_minimum_required(VERSION 3.5)
-project(threadsafe_cpp)
-
-include_directories(include)
+project(threadsafe)
 
 set(CMAKE_CXX_STANDARD 14)
-set(THREADSAFE_CPP_SOURCES include/map.hpp)
+
+set(THREADSAFE_INCLUDE_DIRS include)
+include_directories(${THREADSAFE_INCLUDE_DIRS})
 
 
-add_library(threadsafe_cpp ${THREADSAFE_CPP_SOURCES})
+set(THREADSAFE_SOURCES
+        include/threadsafe/map.hpp
+        include/threadsafe/math.hpp)
 
-SET_TARGET_PROPERTIES(threadsafe_cpp PROPERTIES LINKER_LANGUAGE CXX)
+
+add_library(threadsafe ${THREADSAFE_SOURCES})
+add_executable(threadsafe_test_main tests/main.cpp)
+
+
+target_link_libraries(threadsafe_test_main threadsafe)
+
+
+set_target_properties(threadsafe PROPERTIES LINKER_LANGUAGE CXX)

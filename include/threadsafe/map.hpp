@@ -9,14 +9,44 @@
 #include <vector>
 #include <mutex>
 #include <map>
+#include <algorithm>
 #include <sstream>
+#include "math.hpp"
 
 namespace ts
 {
 
-    template<typename K, typename V>
-    class map
-    {
+
+template<typename K, typename V>
+class map
+{
+
+#define LOCK() std::lock_guard<std::mutex> lock(_mutex)
+
+#define RETURN_FIND(KEY, BEGIN_FUNC, END_FUNC) \
+    size_type low = 0; \
+    size_type high = size_unlocked() - 1; \
+    while (low <= high) \
+    { \
+        int index = (high + low) / 2; \
+        const std::pair<K,V>& current_pair = _data[index]; \
+        const std::pair<K,V>& low_pair = _data[low]; \
+        const std::pair<K,V>& high_pair = _data[high]; \
+        if(compare(current_pair.first, KEY) == 0) \
+        { \
+            return BEGIN_FUNC() + index; \
+        } \
+        else if(compare(current_pair.first, low_pair.first) < 0) \
+        { \
+            high = index - 1; \
+        } \
+        else\
+        { \
+            low = index + 1; \
+        } \
+    } \
+    return END_FUNC() \
+
 
     public:
         typedef typename std::vector<std::pair<K,V>>::iterator iterator;
@@ -59,8 +89,6 @@ namespace ts
         iterator rend();
         const_iterator const_rend() const;
 
-        std::string to_string() const;
-
         map<K, V>& operator=(const map<K,V> rhs);
 
     private:
@@ -69,6 +97,7 @@ namespace ts
         int compare(const K& k1, const K& k2) const;
 
         iterator find_unlocked(const K &key);
+        const_iterator const_find_unlocked(const K& key);
 
         iterator begin_unlocked();
         const_iterator const_begin_unlocked() const;
@@ -81,6 +110,8 @@ namespace ts
 
         iterator rend_unlocked();
         const_iterator const_rend_unlocked() const;
+
+        iterator binary_insert_unlocked(const K &key, const V &value);
 
     private:
         std::vector<std::pair<K, V>> _data;
@@ -114,44 +145,35 @@ namespace ts
     template<typename K, typename V>
     typename map<K, V>::size_type map<K, V>::size() const
     {
-        std::lock_guard<std::mutex> lock(_mutex);
+        LOCK();
         return size_unlocked();
     }
 
     template<typename K, typename V>
     typename map<K, V>::iterator map<K, V>::find(const K& key)
     {
-        std::lock_guard<std::mutex> lock(_mutex);
+        LOCK();
         return find_unlocked(key);
     };
 
     template<typename K, typename V>
+    typename map<K, V>::const_iterator map<K, V>::const_find(const K &key)
+    {
+        LOCK();
+        return const_find_unlocked(key);
+    }
+
+    template<typename K, typename V>
     typename map<K, V>::iterator map<K, V>::insert(const K &key, const V &value)
     {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        int index = 0;
-        size_type size = size_unlocked();
-
-        if(size > 0)
-        {
-            while(index < size && compare(_data[index].first, key) < 0)
-                ++index;
-
-            if(index < size && compare(_data[index].first, key) == 0)
-            {
-                _data[index] = std::pair<K,V>(key, value);
-                return begin_unlocked() + index;
-            }
-        }
-
-        return _data.insert(begin_unlocked() + index, std::pair<K, V>(key, value));
+        LOCK();
+        return binary_insert_unlocked(key, value);
     }
 
     template<typename K, typename V>
     typename map<K, V>::iterator map<K, V>::erase(const K& key)
     {
-        std::lock_guard<std::mutex> lock(_mutex);
+        LOCK();
 
         iterator it_end = end_unlocked();
         iterator it_target = find_unlocked(key);
@@ -165,7 +187,7 @@ namespace ts
     template<typename K, typename V>
     typename map<K, V>::iterator map<K, V>::erase(size_type index)
     {
-        std::lock_guard<std::mutex> lock(_mutex);
+        LOCK();
         return _data.erase(begin_unlocked() + index);
     };
 
@@ -179,63 +201,63 @@ namespace ts
     template<typename K, typename V>
     V& map<K, V>::operator[](size_type index)
     {
-        std::lock_guard<std::mutex> lock(_mutex);
+        LOCK();
         return _data[index].second;
     }
 
     template<typename K, typename V>
     typename map<K, V>::iterator map<K,V>::begin()
     {
-        std::lock_guard<std::mutex> lock(_mutex);
+        LOCK();
         return begin_unlocked();
     }
 
     template<typename K, typename V>
     typename map<K, V>::iterator map<K,V>::end()
     {
-        std::lock_guard<std::mutex> lock(_mutex);
+        LOCK();
         return end_unlocked();
     }
 
     template<typename K, typename V>
     typename map<K, V>::iterator map<K, V>::rbegin()
     {
-        std::lock_guard<std::mutex> lock(_mutex);
+        LOCK();
         return rbegin_unlocked();
     }
 
     template<typename K, typename V>
     typename map<K, V>::iterator map<K, V>::rend()
     {
-        std::lock_guard<std::mutex> lock(_mutex);
+        LOCK();
         return rend_unlocked();
     }
 
     template<typename K, typename V>
     typename map<K, V>::const_iterator map<K, V>::const_begin() const
     {
-        std::lock_guard<std::mutex> lock(_mutex);
+        LOCK();
         return const_begin_unlocked();
     }
 
     template<typename K, typename V>
     typename map<K, V>::const_iterator map<K, V>::const_end() const
     {
-        std::lock_guard<std::mutex> lock(_mutex);
+        LOCK();
         return const_end_unlocked();
     }
 
     template<typename K, typename V>
     typename map<K, V>::const_iterator map<K, V>::const_rbegin() const
     {
-        std::lock_guard<std::mutex> lock(_mutex);
+        LOCK();
         return const_rbegin_unlocked();
     }
 
     template<typename K, typename V>
     typename map<K, V>::const_iterator map<K, V>::const_rend() const
     {
-        std::lock_guard<std::mutex> lock(_mutex);
+        LOCK();
         return const_rend_unlocked();
     }
 
@@ -305,54 +327,14 @@ namespace ts
     template<typename K, typename V>
     typename map<K, V>::iterator map<K, V>::find_unlocked(const K &key)
     {
-        size_type low = 0;
-        size_type high = _data.size() - 1;
-
-        while (low <= high)
-        {
-            int index = (high + low) / 2;
-
-            const std::pair<K,V>& current_pair = _data[index];
-            const std::pair<K,V>& low_pair = _data[low];
-            const std::pair<K,V>& high_pair = _data[high];
-
-            if(compare(current_pair.first, key) == 0)
-            {
-                return begin_unlocked() + index;
-            }
-            else if(compare(current_pair.first, low_pair.first) < 0)
-            {
-                high = index - 1;
-            }
-            else //if(compare(current_pair.first, high_pair.first) > 0)
-            {
-                low = index + 1;
-            }
-        }
-
-        return end_unlocked();
+        RETURN_FIND(key, begin_unlocked, end_unlocked);
     }
 
     template<typename K, typename V>
-    std::string map<K, V>::to_string() const
+    typename map<K,V>::const_iterator map<K, V>::const_find_unlocked(const K &key)
     {
-        std::lock_guard<std::mutex> lock(_mutex);
-
-        std::stringstream stream;
-
-        stream << "[ ";
-        for(auto it = const_begin_unlocked(); it != const_end_unlocked(); ++it)
-        {
-            stream << "(" + it->first << ", " << it->second << "), ";
-        }
-
-        std::string s = stream.str();
-
-        int cut = size_unlocked() > 0 ? 2 : 1;
-
-        return s.substr(0, s.size() - cut) + " ]";
+        RETURN_FIND(key, const_begin_unlocked, const_end_unlocked);
     }
-
 
     template<typename K, typename V>
     map<K, V> &map<K, V>::operator=(const map<K, V> rhs)
@@ -364,13 +346,63 @@ namespace ts
     template<typename K, typename V>
     const V& map<K, V>::at(map::size_type index)
     {
+        LOCK();
         return _data.at(index).second;
     }
 
     template<typename K, typename V>
-    map::const_iterator map<K, V>::const_find(const K &key)
+    typename map<K, V>::iterator map<K, V>::binary_insert_unlocked(const K &key, const V &value)
     {
-        return find(key);
+        size_type size = size_unlocked();
+        bool empty = size == 0;
+
+        size_type low = 0;
+        size_type high = empty ? 0 : size - 1;
+
+        size_type index = 0;
+
+        if(!empty)
+        {
+            while (low <= high)
+            {
+                index = (high + low) / 2;
+
+                std::pair<K, V>& current_pair = _data[index];
+                const std::pair<K, V>& low_pair = _data[low];
+                const std::pair<K, V>& high_pair = _data[high];
+
+                int key_current_compared = compare(key, current_pair.first);
+
+                if(low == high && key_current_compared != 0)
+                    break;
+
+                if (key_current_compared == 0) // this key already exists, overwrite it
+                {
+                    current_pair.first = key;
+                    current_pair.second = value;
+
+                    return begin() + index;
+                }
+                else if (key_current_compared < 0) // go left
+                {
+                    high = index > 0 ? index - 1 : 0;
+                }
+                else // go right
+                {
+                    low = index < size - 1 ? index + 1 : size - 1;
+                }
+            }
+
+            low = clamp<size_type>(low, 0, size - 1);
+            high = clamp<size_type>(high, 0, size - 1);
+        }
+
+        index = clamp<size_type>(index, 0, (high <= low) ? high : low);
+
+        while(index < size && compare(key, _data[index].first) > 0)
+            ++index;
+
+        return _data.insert(begin_unlocked() + index, std::pair<K, V>(key, value));
     }
 };
 
