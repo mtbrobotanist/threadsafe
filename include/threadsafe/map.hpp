@@ -17,32 +17,6 @@ namespace ts
 template<typename K, typename V>
 class map
 {
-
-#define RETURN_FIND_UNLOCKED(KEY, IT_BEGIN_UNLOCKED, IT_END_UNLOCKED) \
-    size_type low = 0; \
-    size_type high = size_unlocked() - 1; \
-    while (low <= high) \
-    { \
-        size_type index = (high + low) / 2; \
-        const value_type& current_pair = _data[index]; \
-        const value_type& low_pair = _data[low]; \
-        const value_type& high_pair = _data[high]; \
-        int key_current_compared = compare(KEY, current_pair.first); \
-        if(key_current_compared == 0) \
-        { \
-            return IT_BEGIN_UNLOCKED + index; \
-        } \
-        else if(key_current_compared < 0) \
-        { \
-            high = index - 1; \
-        } \
-        else \
-        { \
-            low = index + 1; \
-        } \
-    } \
-    return IT_END_UNLOCKED; \
-
     typedef std::lock_guard<std::mutex> scoped_lock;
 
     public:
@@ -368,17 +342,19 @@ class map
     template<typename K, typename V>
     int map<K, V>::compare(const K& k1, const K& k2) const
     {
-        auto k1_d = deref_key(k1);
-        auto k2_d = deref_key(k2);
-
-        return k1_d < k2_d ? -1 : k1_d == k2_d ? 0 : 1;
+        return k1 < k2 ? -1 : k1 == k2 ? 0 : 1;
     }
 
     template<typename K, typename V>
     typename map<K, V>::iterator map<K, V>::find_unlocked(const K &key)
     {
+        size_type size = size_unlocked();
+
+        if(size == 0)
+            return end_unlocked();
+
         size_type low = 0;
-        size_type high = size_unlocked() - 1;
+        size_type high = size - 1;
 
         while (low <= high)
         {
@@ -403,14 +379,20 @@ class map
                 low = index + 1;
             }
         }
+
         return end_unlocked();
     }
 
     template<typename K, typename V>
     typename map<K, V>::const_iterator map<K, V>::const_find_unlocked(const K &key) const
     {
+        size_type size = size_unlocked();
+
+        if(size == 0)
+            return const_end_unlocked();
+
         size_type low = 0;
-        size_type high = size_unlocked() - 1;
+        size_type high = size - 1;
 
         while (low <= high)
         {
@@ -435,6 +417,7 @@ class map
                 low = index + 1;
             }
         }
+
         return const_end_unlocked();
     }
 

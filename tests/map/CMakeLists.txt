@@ -20,7 +20,7 @@ target_link_libraries(map_test_single_threaded_pointer
         gtest_main)
 
 
-add_executable(map_test_multi_threaded map_test_multi_threaded.cpp)
+add_executable(map_test_multi_threaded map_test_multi_threaded.cpp MultiThreadedTestFixture.h)
 target_link_libraries(map_test_multi_threaded
         threadsafe
         gtest
